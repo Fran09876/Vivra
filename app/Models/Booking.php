@@ -14,6 +14,9 @@ class Booking extends Model
         'experiencia_id',
         'titulo_experiencia',
         'total_pago',
+        'fecha',
+        'horario',
+        'personas',
         'estatus'
     ];
 }

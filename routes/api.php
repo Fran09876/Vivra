@@ -27,6 +27,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('role:prestador')->group(function () {
         Route::post('/experiencias', [ExperienceController::class, 'store']); // Crear Experiencias
         Route::get('/mis-experiencias', [ExperienceController::class, 'myExperiences']); // Ver las suyas
+        Route::post('/resenas/{id}/respuesta', [ReviewController::class, 'reply']); // Responder a Reseña
+        Route::delete('/resenas/{id}/respuesta', [ReviewController::class, 'destroyReply']); // Eliminar respuesta de reseña
+        Route::get('/reservas-recibidas', [BookingController::class, 'receivedBookings']); // Ver reservas recibidas
     });
 
     // --- COMPARTIDO: ADMIN Y PRESTADOR ---
@@ -38,6 +41,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // --- EXCLUSIVO: TURISTA ---
     Route::middleware('role:turista')->group(function () {
         Route::post('/carrito-comprar', [BookingController::class, 'store']); // Comprar Experiencia
+        Route::get('/mis-reservas', [BookingController::class, 'myBookings']); // Ver mis reservas
         Route::post('/experiencias/{experience_id}/resenas', [ReviewController::class, 'store']); // Crear Reseñas
         Route::put('/resenas/{id}', [ReviewController::class, 'update']); // Editar sus Reseñas
     });

@@ -13,7 +13,8 @@ class Review extends Model
         'experience_id',
         'user_id',
         'rating',      // Calificación del 1 al 5
-        'comment'      // El texto de la reseña
+        'comment',     // El texto de la reseña
+        'respuesta_prestador'
     ];
 
     // Relación: Una reseña pertenece a un usuario (turista)

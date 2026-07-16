@@ -4,37 +4,74 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Booking;
-use App\Models\Experience; // <-- IMPORTAMOS EL MODELO REAL EN LUGAR DE DB
+use App\Models\Experience;
+use Illuminate\Support\Facades\Auth;
 
 class BookingController extends Controller
 {
+    // Crear reserva dinámica
     public function store(Request $request)
     {
-        // 1. Obtenemos el usuario (turista) directamente desde el Token de Sanctum
+        $request->validate([
+            'experiencia_id' => 'required|string',
+            'fecha' => 'required|string',
+            'horario' => 'required|string',
+            'personas' => 'required|integer|min:1',
+        ]);
+
         $user = $request->user();
 
-        // 2. Buscamos la primera experiencia disponible usando Eloquent de Mongo
-        $experience = Experience::first();
+        // Buscar experiencia real
+        $experience = Experience::find($request->experiencia_id);
 
         if (!$experience) {
             return response()->json([
-                'error' => 'No se pudo procesar la compra porque no hay experiencias registradas en MongoDB.'
+                'error' => 'La experiencia solicitada no existe en MongoDB.'
             ], 404);
         }
 
-        // 3. Insertamos el documento de la compra en la colección 'bookings'
+        $total = ($experience->precio ?? 0) * $request->personas;
+
+        // Crear la reserva
         $booking = Booking::create([
             'turista_id' => $user->_id,
-            'experiencia_id' => $experience->_id, // ID dinámico de Mongo
+            'experiencia_id' => $experience->_id,
             'titulo_experiencia' => $experience->titulo ?? 'Tour en Oaxaca',
-            'total_pago' => $experience->precio ?? 0,
-            'estatus' => 'confirmada' 
+            'total_pago' => $total,
+            'fecha' => $request->fecha,
+            'horario' => $request->horario,
+            'personas' => $request->personas,
+            'estatus' => 'confirmada'
         ]);
 
-        // 4. Respondemos al Frontend con éxito
         return response()->json([
-            'mensaje' => '¡Compra realizada con éxito desde el carrito!',
+            'mensaje' => '¡Reserva realizada con éxito!',
             'detalles_de_la_reserva' => $booking
         ], 201);
+    }
+
+    // Obtener las reservas del turista logueado
+    public function myBookings(Request $request)
+    {
+        $bookings = Booking::where('turista_id', Auth::id())->orderBy('created_at', 'desc')->get();
+        
+        // Agregar información de la experiencia a cada reserva
+        foreach ($bookings as $booking) {
+            $booking->experiencia = Experience::find($booking->experiencia_id);
+        }
+
+        return response()->json($bookings, 200);
+    }
+
+    // Obtener reservas recibidas (para prestadores)
+    public function receivedBookings(Request $request)
+    {
+        // Buscar todas las experiencias creadas por el prestador
+        $myExperiencesIds = Experience::where('prestador_id', Auth::id())->pluck('_id')->toArray();
+
+        // Buscar reservas correspondientes a estas experiencias
+        $bookings = Booking::whereIn('experiencia_id', $myExperiencesIds)->orderBy('created_at', 'desc')->get();
+
+        return response()->json($bookings, 200);
     }
 }

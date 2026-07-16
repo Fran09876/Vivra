@@ -75,5 +75,62 @@ class ReviewController extends Controller
         $review->delete();
         return response()->json(['mensaje' => 'Reseña eliminada correctamente'], 200);
     }
+
+    // NUEVO: Prestador responde a una reseña
+    public function reply(Request $request, $id)
+    {
+        $request->validate([
+            'respuesta' => 'required|string|max:500'
+        ]);
+
+        $review = Review::find($id);
+        if (!$review) {
+            return response()->json(['error' => 'Reseña no encontrada'], 404);
+        }
+
+        // Validar que el usuario sea el prestador de la experiencia
+        $experiencia = Experience::find($review->experience_id);
+        if (!$experiencia) {
+            return response()->json(['error' => 'Experiencia asociada no encontrada'], 404);
+        }
+
+        if ($experiencia->prestador_id !== Auth::id()) {
+            return response()->json(['error' => 'No tienes permiso para responder a esta reseña. No eres el creador de esta experiencia.'], 403);
+        }
+
+        // Guardar la respuesta embebida (compatible con MongoDB)
+        $review->respuesta_prestador = [
+            'texto' => $request->respuesta,
+            'prestador_id' => Auth::id(),
+            'created_at' => now()->toIso8601String()
+        ];
+        $review->save();
+
+        return response()->json(['mensaje' => 'Respuesta publicada correctamente', 'data' => $review], 200);
+    }
+
+    // NUEVO: Prestador elimina su respuesta
+    public function destroyReply($id)
+    {
+        $review = Review::find($id);
+        if (!$review) {
+            return response()->json(['error' => 'Reseña no encontrada'], 404);
+        }
+
+        // Validar que el usuario sea el prestador de la experiencia
+        $experiencia = Experience::find($review->experience_id);
+        if (!$experiencia) {
+            return response()->json(['error' => 'Experiencia asociada no encontrada'], 404);
+        }
+
+        if ($experiencia->prestador_id !== Auth::id()) {
+            return response()->json(['error' => 'No tienes permiso para eliminar esta respuesta.'], 403);
+        }
+
+        // Eliminar campo en MongoDB
+        $review->unset('respuesta_prestador');
+
+        return response()->json(['mensaje' => 'Respuesta eliminada correctamente'], 200);
+    }
 }
 
